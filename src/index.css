@@ -123,6 +123,8 @@ html.light .bg-white\/5  { background-color: rgba(0,0,0,0.04); }
 html.light .bg-white\/8  { background-color: rgba(0,0,0,0.06); }
 html.light .bg-white\/10 { background-color: rgba(0,0,0,0.07); }
 html.light .hover\:bg-white\/5:hover  { background-color: rgba(0,0,0,0.04); }
+/* Table: give header a distinct background in light mode (bg-surface-800 → white, no distinction otherwise) */
+html.light thead.bg-surface-800 { background-color: #f0f2f8; }
 html.light .hover\:bg-white\/8:hover  { background-color: rgba(0,0,0,0.06); }
 html.light .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,0.07); }
 
@@ -171,3 +173,21 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 .prose p:last-child {
   margin-bottom: 0;
 }
+.prose p {
+  margin-top: 0.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.7;
+}
+.prose ul,
+.prose ol {
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  padding-left: 1.4em;
+}
+.prose li {
+  margin-top: 0.2em;
+  margin-bottom: 0.2em;
+}
+.prose h1 { font-size: 1.2em; }
+.prose h2 { font-size: 1.1em; }
+.prose h3 { font-size: 1.05em; }
