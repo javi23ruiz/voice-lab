@@ -1,16 +1,18 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import Anthropic from '@anthropic-ai/sdk'
 
 const app = express()
 const PORT = process.env.PORT || 3001
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
-// POST /api/chat — hardcoded response while in development
+// POST /api/chat — streams Claude responses via SSE
 app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body
+  const { messages, model = 'claude-sonnet-4-6', system } = req.body
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages array is required' })
@@ -22,9 +24,25 @@ app.post('/api/chat', async (req, res) => {
   res.flushHeaders()
 
   try {
-    const reply = '🚧 I am under development, stay tuned!'
-    res.write(`data: ${JSON.stringify({ type: 'delta', text: reply })}\n\n`)
-    res.write(`data: ${JSON.stringify({ type: 'done', usage: null, stop_reason: 'end_turn' })}\n\n`)
+    const stream = client.messages.stream({
+      model,
+      max_tokens: 4096,
+      system: system || 'You are a helpful, thoughtful assistant. Format responses using markdown when appropriate.',
+      messages,
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        res.write(`data: ${JSON.stringify({ type: 'delta', text: event.delta.text })}\n\n`)
+      }
+    }
+
+    const finalMsg = await stream.finalMessage()
+    res.write(`data: ${JSON.stringify({ type: 'done', usage: finalMsg.usage, stop_reason: finalMsg.stop_reason })}\n\n`)
+  } catch (err) {
+    console.error('Anthropic API error:', err)
+    res.write(`data: ${JSON.stringify({ type: 'delta', text: '\n\n⚠️ API error: ' + err.message })}\n\n`)
+    res.write(`data: ${JSON.stringify({ type: 'done', usage: null, stop_reason: 'error' })}\n\n`)
   } finally {
     res.end()
   }
