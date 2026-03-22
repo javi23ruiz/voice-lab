@@ -4,7 +4,7 @@ import type { Conversation } from '../types'
 interface Props {
   conversation: Conversation | null
   sidebarOpen: boolean
-  activeView: 'chat' | 'analytics' | 'map'
+  activeView: 'chat' | 'analytics' | 'map' | 'landing'
   onExpandSidebar: () => void
   theme: 'dark' | 'light'
   onToggleTheme: () => void

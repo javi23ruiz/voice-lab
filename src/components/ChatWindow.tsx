@@ -10,6 +10,9 @@ interface Props {
   onSend: (content: string) => void
   onRegenerate: () => void
   onEdit: () => void
+  suggestions?: string[]
+  emptyTitle?: string
+  emptyDescription?: string
 }
 
 // ─── Starfield canvas ─────────────────────────────────────────────────────────
@@ -98,7 +101,7 @@ function StarField({ isDark }: { isDark: boolean }) {
 }
 
 // ─── Chat window ──────────────────────────────────────────────────────────────
-export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerate, onEdit }: Props) {
+export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerate, onEdit, suggestions, emptyTitle, emptyDescription }: Props) {
   const isDark = theme === 'dark'
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -139,13 +142,13 @@ export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerat
           <Bot size={28} className="text-accent-400" />
         </div>
         <div className="relative z-10">
-          <h2 className="text-xl font-semibold text-gray-200 mb-1">Voice Model Lab</h2>
+          <h2 className="text-xl font-semibold text-gray-200 mb-1">{emptyTitle ?? 'Voice Model Lab'}</h2>
           <p className="text-sm text-gray-500 max-w-xs">
-            Test different Claude models. Voice capabilities coming soon.
+            {emptyDescription ?? 'Test different Claude models. Voice capabilities coming soon.'}
           </p>
         </div>
         <div className="relative z-10 grid grid-cols-2 gap-2 mt-2">
-          {SUGGESTIONS.map(s => (
+          {(suggestions ?? SUGGESTIONS).map(s => (
             <button
               key={s}
               onClick={() => onSend(s)}

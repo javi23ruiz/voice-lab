@@ -48,6 +48,29 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
+// POST /api/map-agent — single non-streaming call for the agent loop
+app.post('/api/map-agent', async (req, res) => {
+  const { messages, systemPrompt, model = 'claude-sonnet-4-6' } = req.body
+
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'messages array is required' })
+  }
+
+  try {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages,
+    })
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    res.json({ text })
+  } catch (err) {
+    console.error('Map agent API error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /api/models — available models list
 app.get('/api/models', (_req, res) => {
   res.json({

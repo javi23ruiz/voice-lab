@@ -13,12 +13,31 @@ export interface Message {
   isStreaming?: boolean
 }
 
+export interface MapMarker {
+  lat: number
+  lng: number
+  label: string
+}
+
+export type BaseLayer = 'street' | 'satellite' | 'terrain' | 'dark' | 'light'
+export type OverlayLayer = 'railways' | 'heatmap'
+
+export interface MapState {
+  center: [number, number]
+  zoom: number
+  markers: MapMarker[]
+  baseLayer?: BaseLayer
+  activeOverlays?: OverlayLayer[]
+}
+
 export interface Conversation {
   id: string
   title: string
   messages: Message[]
   model: string
   pinned?: boolean
+  isMapConversation?: boolean
+  mapState?: MapState
   createdAt: Date
   updatedAt: Date
 }

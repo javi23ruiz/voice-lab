@@ -6,6 +6,7 @@ import { MessageInput } from './components/MessageInput'
 import { ToastProvider } from './components/Toast'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 import { OpenStreetMapView } from './components/OpenStreetMapView'
+import { LandingCards } from './components/LandingCards'
 import { useChat } from './hooks/useChat'
 
 export default function App() {
@@ -13,12 +14,9 @@ export default function App() {
     conversations,
     activeConversation,
     activeConversationId,
-    models,
-    selectedModel,
     isLoading,
     systemPrompt,
     setSystemPrompt,
-    setSelectedModel,
     setActiveConversationId,
     fetchModels,
     deleteConversation,
@@ -27,12 +25,17 @@ export default function App() {
     sendMessage,
     stopStreaming,
     removeLastExchange,
+    createMapConversation,
+    updateConversation,
   } = useChat()
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [prefill, setPrefill] = useState<string>('')
   const [prefillKey, setPrefillKey] = useState(0)
-  const [activeView, setActiveView] = useState<'chat' | 'analytics' | 'map'>('chat')
+  const [activeView, setActiveView] = useState<'chat' | 'analytics' | 'map' | 'landing'>('landing')
+  const [mapConvId, setMapConvId] = useState<string | null>(null)
+
+  const mapConversation = conversations.find(c => c.id === mapConvId) ?? null
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
   )
@@ -63,18 +66,24 @@ export default function App() {
       <div className="flex h-screen bg-surface-900 text-gray-100 overflow-hidden">
         {sidebarOpen && (
           <Sidebar
-            conversations={conversations}
+            conversations={conversations.filter(c => c.messages.length > 0)}
             activeId={activeConversationId}
-            models={models}
-            selectedModel={selectedModel}
             systemPrompt={systemPrompt}
-            activeView={activeView}
-            onNew={() => { setActiveConversationId(null); setActiveView('chat') }}
-            onSelect={id => { setActiveConversationId(id); setActiveView('chat') }}
+            activeView={activeView === 'analytics' ? 'analytics' : 'chat'}
+            onNew={() => { setActiveConversationId(null); setActiveView('landing') }}
+            onSelect={id => {
+              setActiveConversationId(id)
+              const conv = conversations.find(c => c.id === id)
+              if (conv?.isMapConversation) {
+                setMapConvId(id)
+                setActiveView('map')
+              } else {
+                setActiveView('chat')
+              }
+            }}
             onDelete={deleteConversation}
             onRename={renameConversation}
             onPin={pinConversation}
-            onModelChange={setSelectedModel}
             onSystemPromptChange={setSystemPrompt}
             onCollapse={() => setSidebarOpen(false)}
             onSetView={setActiveView}
@@ -92,18 +101,25 @@ export default function App() {
           />
           {activeView === 'analytics' ? (
             <AnalyticsDashboard conversations={conversations} theme={theme} />
-          ) : activeView === 'map' ? (
+          ) : activeView === 'map' && mapConversation ? (
             <OpenStreetMapView
-              conversation={activeConversation}
-              isLoading={isLoading}
+              key={mapConvId}
               theme={theme}
-              activeConversationId={activeConversationId}
-              prefill={prefill}
-              prefillKey={prefillKey}
-              onSend={sendMessage}
-              onStop={stopStreaming}
-              onRegenerate={handleRegenerate}
-              onEdit={handleEdit}
+              conversation={mapConversation}
+              onUpdateConversation={updater => updateConversation(mapConvId!, updater)}
+            />
+          ) : activeView === 'landing' ? (
+            <LandingCards
+              theme={theme}
+              onSelectMap={() => {
+                const id = createMapConversation()
+                setMapConvId(id)
+                setActiveView('map')
+              }}
+              onSelectChat={() => {
+                setActiveConversationId(null)
+                setActiveView('chat')
+              }}
             />
           ) : (
             <>
