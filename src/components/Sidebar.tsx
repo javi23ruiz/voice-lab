@@ -1,22 +1,20 @@
-import { Plus, MessageSquare, Settings, MoreHorizontal, Pencil, Pin, PinOff, Trash2, Search, X, PanelLeftClose } from 'lucide-react'
+import { Plus, MessageSquare, Map as MapIcon, Settings, MoreHorizontal, Pencil, Pin, PinOff, Trash2, Search, X, PanelLeftClose, BarChart2 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
-import { ModelSelector } from './ModelSelector'
-import type { Conversation, ModelInfo } from '../types'
+import type { Conversation } from '../types'
 
 interface Props {
   conversations: Conversation[]
   activeId: string | null
-  models: ModelInfo[]
-  selectedModel: string
   systemPrompt: string
+  activeView: 'chat' | 'analytics'
   onNew: () => void
   onSelect: (id: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, title: string) => void
   onPin: (id: string) => void
-  onModelChange: (id: string) => void
   onSystemPromptChange: (v: string) => void
   onCollapse: () => void
+  onSetView: (view: 'chat' | 'analytics' | 'map' | 'landing') => void
 }
 
 function getDateLabel(date: Date): string {
@@ -44,17 +42,16 @@ function groupByDate(convs: Conversation[]) {
 export function Sidebar({
   conversations,
   activeId,
-  models,
-  selectedModel,
   systemPrompt,
+  activeView,
   onNew,
   onSelect,
   onDelete,
   onRename,
   onPin,
-  onModelChange,
   onSystemPromptChange,
   onCollapse,
+  onSetView,
 }: Props) {
   const [showSettings, setShowSettings] = useState(false)
   const [search, setSearch] = useState('')
@@ -88,12 +85,6 @@ export function Sidebar({
         >
           <Plus size={16} />
         </button>
-      </div>
-
-      {/* Model selector */}
-      <div className="px-3 py-3 border-b section-divider">
-        <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 px-1">Model</p>
-        <ModelSelector models={models} selected={selectedModel} onChange={onModelChange} />
       </div>
 
       {/* Search */}
@@ -160,6 +151,21 @@ export function Sidebar({
             ))}
           </>
         )}
+      </div>
+
+      {/* Analytics */}
+      <div className="border-t section-divider">
+        <button
+          onClick={() => onSetView(activeView === 'analytics' ? 'chat' : 'analytics')}
+          className={`w-full flex items-center gap-2 px-4 py-3 text-sm transition-colors ${
+            activeView === 'analytics'
+              ? 'text-accent-400 bg-accent-500/10'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+          }`}
+        >
+          <BarChart2 size={14} />
+          <span>Analytics</span>
+        </button>
       </div>
 
       {/* Settings */}
@@ -248,7 +254,10 @@ function ConversationItem({
         active ? 'bg-accent-500/15 text-gray-100' : 'text-gray-300 hover:bg-white/5 hover:text-gray-100'
       }`}
     >
-      <MessageSquare size={13} className="flex-shrink-0" />
+      {conv.isMapConversation
+        ? <MapIcon size={13} className="flex-shrink-0 text-accent-400" />
+        : <MessageSquare size={13} className="flex-shrink-0" />
+      }
 
       {renaming ? (
         <input

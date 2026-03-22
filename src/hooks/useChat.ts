@@ -6,6 +6,7 @@ const generateId = () => Math.random().toString(36).slice(2, 11)
 const DEFAULT_MODEL = 'claude-opus-4-6'
 const DEFAULT_SYSTEM = 'You are a helpful, thoughtful assistant. Format responses using markdown when appropriate.'
 const STORAGE_KEY = 'chatbot_conversations'
+const MAP_CONV_LEGACY_KEY = 'map_agent_conversation'
 
 function loadConversations(): Conversation[] {
   try {
@@ -26,11 +27,13 @@ function loadConversations(): Conversation[] {
 
 function saveConversations(convs: Conversation[]) {
   try {
-    // Don't persist mid-stream state
-    const clean = convs.map(c => ({
-      ...c,
-      messages: c.messages.map(m => ({ ...m, isStreaming: false })),
-    }))
+    // Don't persist empty or mid-stream conversations
+    const clean = convs
+      .filter(c => c.messages.length > 0)
+      .map(c => ({
+        ...c,
+        messages: c.messages.map(m => ({ ...m, isStreaming: false })),
+      }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
   } catch {
     // quota exceeded or private mode — silently skip
@@ -297,6 +300,49 @@ export function useChat() {
     )
   }, [activeConversationId])
 
+  // Returns the ID of the persistent Map Assistant conversation, creating it if needed.
+  // Also cleans up the legacy standalone localStorage key.
+  const getOrCreateMapConversation = useCallback((): string => {
+    localStorage.removeItem(MAP_CONV_LEGACY_KEY)
+    let mapConv = conversations.find(c => c.isMapConversation)
+    if (mapConv) return mapConv.id
+    mapConv = {
+      id: generateId(),
+      title: 'Map Assistant',
+      messages: [],
+      model: 'claude-sonnet-4-6',
+      isMapConversation: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    setConversations(prev => [...prev, mapConv!])
+    return mapConv.id
+  }, [conversations])
+
+  // Always creates a fresh Map Assistant conversation (new session every time).
+  const createMapConversation = useCallback((): string => {
+    localStorage.removeItem(MAP_CONV_LEGACY_KEY)
+    const mapConv: Conversation = {
+      id: generateId(),
+      title: 'Map Assistant',
+      messages: [],
+      model: 'claude-sonnet-4-6',
+      isMapConversation: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    setConversations(prev => [...prev, mapConv])
+    return mapConv.id
+  }, [])
+
+  // Generic updater for any conversation by ID — used by useMapAgent to push messages.
+  const updateConversation = useCallback(
+    (id: string, updater: (prev: Conversation) => Conversation) => {
+      setConversations(prev => prev.map(c => (c.id === id ? updater(c) : c)))
+    },
+    [],
+  )
+
   return {
     conversations,
     activeConversation,
@@ -317,5 +363,8 @@ export function useChat() {
     stopStreaming,
     clearConversation,
     removeLastExchange,
+    getOrCreateMapConversation,
+    createMapConversation,
+    updateConversation,
   }
 }

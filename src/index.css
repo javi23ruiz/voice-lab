@@ -191,3 +191,8 @@ html.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 .prose h1 { font-size: 1.2em; }
 .prose h2 { font-size: 1.1em; }
 .prose h3 { font-size: 1.05em; }
+
+/* OpenStreetMap dark mode tile inversion */
+.map-tiles-dark {
+  filter: invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}

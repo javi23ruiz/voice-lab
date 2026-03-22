@@ -50,11 +50,7 @@ export function MessageBubble({ message, isLast, onRegenerate, onEdit }: Props) 
     >
       {/* Avatar */}
       <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser
-            ? 'bg-accent-500 text-white'
-            : 'bg-surface-800 border border-white/10 text-accent-400'
-        }`}
+        className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-surface-800 border border-white/10 text-accent-400"
       >
         {isUser ? <User size={15} /> : <Bot size={15} />}
       </div>
