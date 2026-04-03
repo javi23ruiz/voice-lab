@@ -1,21 +1,23 @@
-import { Plus, MessageSquare, Map as MapIcon, Settings, MoreHorizontal, Pencil, Pin, PinOff, Trash2, Search, X, PanelLeftClose, BarChart2 } from 'lucide-react'
+import { Plus, MessageSquare, Map as MapIcon, MoreHorizontal, Pencil, Pin, PinOff, Trash2, Search, X, PanelLeftClose, BarChart2, LogOut } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import type { Conversation } from '../types'
 
 interface Props {
   conversations: Conversation[]
   activeId: string | null
-  systemPrompt: string
+  username: string
   activeView: 'chat' | 'analytics'
   onNew: () => void
   onSelect: (id: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, title: string) => void
   onPin: (id: string) => void
-  onSystemPromptChange: (v: string) => void
+  onLogout: () => void
   onCollapse: () => void
   onSetView: (view: 'chat' | 'analytics' | 'map' | 'landing') => void
 }
+
+const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'Last 7 Days', 'Previous']
 
 function getDateLabel(date: Date): string {
   const now = new Date()
@@ -25,35 +27,37 @@ function getDateLabel(date: Date): string {
   if (d.getTime() === today.getTime()) return 'Today'
   if (d.getTime() === yesterday.getTime()) return 'Yesterday'
   const daysAgo = Math.floor((today.getTime() - d.getTime()) / 86_400_000)
-  if (daysAgo < 7) return 'This week'
-  return date.toLocaleDateString([], { month: 'long', year: 'numeric' })
+  if (daysAgo <= 7) return 'Last 7 Days'
+  return 'Previous'
 }
 
 function groupByDate(convs: Conversation[]) {
+  const sorted = [...convs].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
   const map = new Map<string, Conversation[]>()
-  for (const c of convs) {
+  for (const c of sorted) {
     const label = getDateLabel(c.updatedAt)
     if (!map.has(label)) map.set(label, [])
     map.get(label)!.push(c)
   }
-  return Array.from(map.entries()).map(([label, items]) => ({ label, items }))
+  return DATE_GROUP_ORDER
+    .filter(label => map.has(label))
+    .map(label => ({ label, items: map.get(label)! }))
 }
 
 export function Sidebar({
   conversations,
   activeId,
-  systemPrompt,
+  username,
   activeView,
   onNew,
   onSelect,
   onDelete,
   onRename,
   onPin,
-  onSystemPromptChange,
+  onLogout,
   onCollapse,
   onSetView,
 }: Props) {
-  const [showSettings, setShowSettings] = useState(false)
   const [search, setSearch] = useState('')
 
   const filtered = search.trim()
@@ -76,7 +80,7 @@ export function Sidebar({
           >
             <PanelLeftClose size={15} />
           </button>
-          <h1 className="font-semibold text-gray-100 tracking-tight">Voice Lab</h1>
+          <h1 className="font-semibold text-gray-100 tracking-tight">Map AI Assistant</h1>
         </div>
         <button
           onClick={onNew}
@@ -168,27 +172,21 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Settings */}
+      {/* User / Logout */}
       <div className="border-t section-divider">
-        <button
-          onClick={() => setShowSettings(v => !v)}
-          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-colors"
-        >
-          <Settings size={14} />
-          <span>System Prompt</span>
-        </button>
-
-        {showSettings && (
-          <div className="px-3 pb-3 animate-fade-in">
-            <textarea
-              value={systemPrompt}
-              onChange={e => onSystemPromptChange(e.target.value)}
-              rows={4}
-              className="w-full text-xs bg-surface-900 border border-white/10 rounded-lg px-3 py-2 text-gray-300 placeholder-gray-500 resize-none focus:outline-none focus:border-accent-500/50 transition-colors"
-              placeholder="System prompt…"
-            />
+        <div className="flex items-center gap-2 px-4 py-3">
+          <div className="w-6 h-6 rounded-full bg-accent-500/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[10px] font-semibold text-accent-400 uppercase">{username[0]}</span>
           </div>
-        )}
+          <span className="flex-1 text-sm text-gray-300 truncate">{username}</span>
+          <button
+            onClick={onLogout}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/8 transition-colors"
+            title="Log out"
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
       </div>
     </aside>
   )

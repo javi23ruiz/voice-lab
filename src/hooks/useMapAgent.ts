@@ -84,12 +84,12 @@ export function useMapAgent(
    * Replaces the content of the last assistant message.
    */
   const patchLastAssistant = useCallback(
-    (content: string, isStreaming: boolean) => {
+    (content: string, isStreaming: boolean, usage?: { input_tokens: number; output_tokens: number }) => {
       updateConversation(prev => {
         const messages = [...prev.messages]
         for (let i = messages.length - 1; i >= 0; i--) {
           if (messages[i].role === 'assistant') {
-            messages[i] = { ...messages[i], content, isStreaming }
+            messages[i] = { ...messages[i], content, isStreaming, ...(usage ? { usage } : {}) }
             break
           }
         }
@@ -172,6 +172,8 @@ export function useMapAgent(
 
       // The final text shown to the user — only written to state once, after the loop
       let finalContent = '⚠️ Agent completed without a response.'
+      // Accumulate usage across all agent loop iterations
+      let totalUsage = { input_tokens: 0, output_tokens: 0 }
 
       try {
         let iterations = 0
@@ -197,7 +199,11 @@ export function useMapAgent(
             break
           }
 
-          const { text } = (await res.json()) as { text: string }
+          const { text, usage } = (await res.json()) as { text: string; usage?: { input_tokens: number; output_tokens: number } }
+          if (usage) {
+            totalUsage.input_tokens += usage.input_tokens
+            totalUsage.output_tokens += usage.output_tokens
+          }
           const jsonStr = extractJSON(text)
 
           let parsed: AgentResponse
@@ -245,7 +251,8 @@ export function useMapAgent(
       } finally {
         if (!abortedRef.current) {
           // Single state write after the entire loop — no race conditions
-          patchLastAssistant(finalContent, false)
+          const usageToStore = (totalUsage.input_tokens > 0 || totalUsage.output_tokens > 0) ? totalUsage : undefined
+          patchLastAssistant(finalContent, false, usageToStore)
           // Persist marker state after every agent interaction
           const markers = getMarkerSnapshot()
           const map = mapRef.current

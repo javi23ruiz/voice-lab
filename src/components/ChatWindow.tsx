@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Bot, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
+import { IridescentOrb } from './IridescentOrb'
 import type { Conversation } from '../types'
 
 interface Props {
@@ -11,8 +12,10 @@ interface Props {
   onRegenerate: () => void
   onEdit: () => void
   suggestions?: string[]
+  chips?: { emoji: string; label: string }[]
   emptyTitle?: string
   emptyDescription?: string
+  username?: string
 }
 
 // ─── Starfield canvas ─────────────────────────────────────────────────────────
@@ -101,13 +104,12 @@ function StarField({ isDark }: { isDark: boolean }) {
 }
 
 // ─── Chat window ──────────────────────────────────────────────────────────────
-export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerate, onEdit, suggestions, emptyTitle, emptyDescription }: Props) {
+export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerate, onEdit, suggestions, chips, emptyTitle, emptyDescription, username }: Props) {
   const isDark = theme === 'dark'
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const nearBottomRef = useRef(true)
-
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     bottomRef.current?.scrollIntoView({ behavior })
   }, [])
@@ -135,26 +137,60 @@ export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerat
   }, [conversation?.id, scrollToBottom])
 
   if (!conversation || conversation.messages.length === 0) {
+    const resolvedChips = chips
+      ?? (suggestions ? suggestions.map(s => ({ emoji: '', label: s })) : DEFAULT_CHIPS)
+
+    const greeting = emptyTitle ?? (username ? `Hey ${username}!` : 'Hey there!')
+    const subtitle = emptyDescription ?? 'Ready to assist you with anything you need.'
+
     return (
-      <div className="relative flex-1 flex flex-col items-center justify-center gap-4 text-center px-8 overflow-hidden">
+      <div className="relative flex-1 flex flex-col items-center justify-center gap-6 text-center px-8 overflow-hidden">
         <StarField isDark={isDark} />
-        <div className="relative z-10 w-14 h-14 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center">
-          <Bot size={28} className="text-accent-400" />
-        </div>
+
+        {/* Radial gradient overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 1,
+            background: isDark
+              ? 'radial-gradient(ellipse at center, rgba(120,80,200,0.15) 0%, rgba(100,60,180,0.08) 40%, transparent 70%)'
+              : 'radial-gradient(ellipse at center, rgba(190,170,255,0.25) 0%, rgba(170,150,255,0.12) 40%, transparent 70%)',
+          }}
+        />
+
+        {/* Iridescent orb */}
         <div className="relative z-10">
-          <h2 className="text-xl font-semibold text-gray-200 mb-1">{emptyTitle ?? 'Voice Model Lab'}</h2>
-          <p className="text-sm text-gray-500 max-w-xs">
-            {emptyDescription ?? 'Test different Claude models. Voice capabilities coming soon.'}
+          <IridescentOrb isDark={isDark} />
+        </div>
+
+        {/* Greeting */}
+        <div className="relative z-10 space-y-2">
+          <h2 className={`text-3xl font-bold leading-tight ${
+            isDark ? 'text-gray-100' : 'text-indigo-900'
+          }`}>
+            {greeting}
+            {!emptyTitle && <><br />Can I help you with anything?</>}
+          </h2>
+          <p className={`text-sm max-w-sm mx-auto ${
+            isDark ? 'text-gray-500' : 'text-gray-400'
+          }`}>
+            {subtitle}
           </p>
         </div>
-        <div className="relative z-10 grid grid-cols-2 gap-2 mt-2">
-          {(suggestions ?? SUGGESTIONS).map(s => (
+
+        {/* Suggestion chips */}
+        <div className="relative z-10 flex flex-wrap justify-center gap-2 mt-2 max-w-lg">
+          {resolvedChips.map(chip => (
             <button
-              key={s}
-              onClick={() => onSend(s)}
-              className="px-3 py-2 text-xs text-gray-400 rounded-lg border border-white/8 bg-white/3 hover:bg-white/8 hover:text-gray-200 hover:border-white/15 transition-all text-left cursor-pointer"
+              key={chip.label}
+              onClick={() => onSend(chip.label)}
+              className={`px-4 py-2 text-sm rounded-full border transition-all duration-200 cursor-pointer backdrop-blur-sm ${
+                isDark
+                  ? 'bg-white/[0.08] border-white/[0.12] text-gray-400 hover:bg-white/[0.15] hover:border-white/20 hover:text-gray-200'
+                  : 'bg-white/70 border-white/50 text-gray-600 shadow-sm hover:bg-white/90 hover:text-gray-800'
+              }`}
             >
-              {s}
+              {chip.emoji ? `${chip.emoji}  ${chip.label}` : chip.label}
             </button>
           ))}
         </div>
@@ -173,6 +209,16 @@ export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerat
   return (
     <div className="relative flex-1 min-h-0">
       <StarField isDark={isDark} />
+      {/* Radial gradient overlay (consistent with empty state) */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          background: isDark
+            ? 'radial-gradient(ellipse at center, rgba(120,80,200,0.15) 0%, rgba(100,60,180,0.08) 40%, transparent 70%)'
+            : 'radial-gradient(ellipse at center, rgba(190,170,255,0.25) 0%, rgba(170,150,255,0.12) 40%, transparent 70%)',
+        }}
+      />
       <div
         ref={scrollRef}
         className="relative h-full overflow-y-auto py-6 scroll-smooth scrollbar-thin"
@@ -195,7 +241,11 @@ export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerat
       {showScrollBtn && (
         <button
           onClick={() => scrollToBottom('smooth')}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-800 border border-white/12 text-xs text-gray-300 shadow-lg hover:bg-surface-700 hover:text-white transition-all animate-fade-in"
+          className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs shadow-lg transition-all animate-fade-in ${
+            isDark
+              ? 'bg-surface-800 border border-white/12 text-gray-300 hover:bg-surface-700 hover:text-white'
+              : 'bg-white border border-black/10 text-gray-600 hover:bg-surface-50 hover:text-gray-900'
+          }`}
           style={{ zIndex: 2 }}
         >
           <ChevronDown size={13} />
@@ -206,9 +256,10 @@ export function ChatWindow({ conversation, isLoading, theme, onSend, onRegenerat
   )
 }
 
-const SUGGESTIONS = [
-  'Compare writing styles',
-  'Explain a concept simply',
-  'Brainstorm ideas',
-  'Debug my code',
+const DEFAULT_CHIPS = [
+  { emoji: '\u{1F5FA}\uFE0F', label: 'Explore a place' },
+  { emoji: '\u2728', label: 'Surprise Me' },
+  { emoji: '\u{1F4A1}', label: 'Get Advice' },
+  { emoji: '\u{1F9E0}', label: 'Brainstorm' },
+  { emoji: '\u{1F4CA}', label: 'Analyze Data' },
 ]

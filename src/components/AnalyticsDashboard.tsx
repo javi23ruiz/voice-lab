@@ -269,32 +269,35 @@ export function AnalyticsDashboard({ conversations, theme }: Props) {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [chartTab, setChartTab] = useState<ChartTab>('conversations')
 
+  // Filter out empty conversations
+  const nonEmpty = useMemo(() => conversations.filter(c => c.messages.length > 0), [conversations])
+
   const numDays = useMemo((): number => {
     if (dateFilter === 'custom' && customRange) {
       return Math.max(2, Math.ceil((customRange.end.getTime() - customRange.start.getTime()) / 86_400_000) + 1)
     }
     if (dateFilter === 'all') {
-      if (conversations.length === 0) return 30
-      const oldest = Math.min(...conversations.map(c => new Date(c.createdAt).getTime()))
+      if (nonEmpty.length === 0) return 30
+      const oldest = Math.min(...nonEmpty.map(c => new Date(c.createdAt).getTime()))
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       return Math.max(2, Math.ceil((today.getTime() - oldest) / 86_400_000) + 1)
     }
     return dateFilter as number
-  }, [dateFilter, conversations, customRange])
+  }, [dateFilter, nonEmpty, customRange])
 
   const filtered = useMemo(() => {
-    if (dateFilter === 'all') return conversations
+    if (dateFilter === 'all') return nonEmpty
     if (dateFilter === 'custom' && customRange) {
       const s = new Date(customRange.start); s.setHours(0, 0, 0, 0)
       const e = new Date(customRange.end);   e.setHours(23, 59, 59, 999)
-      return conversations.filter(c => { const d = new Date(c.createdAt); return d >= s && d <= e })
+      return nonEmpty.filter(c => { const d = new Date(c.updatedAt); return d >= s && d <= e })
     }
     const cutoff = new Date()
     cutoff.setHours(0, 0, 0, 0)
     cutoff.setDate(cutoff.getDate() - (dateFilter as number) + 1)
-    return conversations.filter(c => new Date(c.createdAt) >= cutoff)
-  }, [conversations, dateFilter, customRange])
+    return nonEmpty.filter(c => new Date(c.updatedAt) >= cutoff)
+  }, [nonEmpty, dateFilter, customRange])
 
   const days = useMemo(() => {
     if (dateFilter === 'custom' && customRange) {
@@ -308,21 +311,29 @@ export function AnalyticsDashboard({ conversations, theme }: Props) {
   }, [dateFilter, customRange, numDays])
 
   // Per-day maps
+  // Conversations are bucketed by updatedAt (last activity date)
   const countByDay = useMemo(() => {
     const map = new Map<string, number>()
     for (const c of filtered) {
-      const d = new Date(c.createdAt); d.setHours(0, 0, 0, 0)
+      const d = new Date(c.updatedAt); d.setHours(0, 0, 0, 0)
       map.set(dateKey(d), (map.get(dateKey(d)) || 0) + 1)
     }
     return map
   }, [filtered])
 
+  // Tokens and cost are bucketed by individual message timestamps
+  // so usage appears on the actual day it occurred
   const tokensByDay = useMemo(() => {
     const map = new Map<string, number>()
     for (const c of filtered) {
-      const d = new Date(c.createdAt); d.setHours(0, 0, 0, 0)
-      const k = dateKey(d)
-      map.set(k, (map.get(k) || 0) + getConvMetrics(c).tokens)
+      for (const m of c.messages) {
+        if (!m.usage) continue
+        const d = new Date(m.timestamp); d.setHours(0, 0, 0, 0)
+        const k = dateKey(d)
+        const price = PRICING[m.model ?? c.model] ?? DEFAULT_PRICE
+        const tokens = m.usage.input_tokens + m.usage.output_tokens
+        map.set(k, (map.get(k) || 0) + tokens)
+      }
     }
     return map
   }, [filtered])
@@ -330,9 +341,15 @@ export function AnalyticsDashboard({ conversations, theme }: Props) {
   const costByDay = useMemo(() => {
     const map = new Map<string, number>()
     for (const c of filtered) {
-      const d = new Date(c.createdAt); d.setHours(0, 0, 0, 0)
-      const k = dateKey(d)
-      map.set(k, (map.get(k) || 0) + getConvMetrics(c).cost)
+      for (const m of c.messages) {
+        if (!m.usage) continue
+        const d = new Date(m.timestamp); d.setHours(0, 0, 0, 0)
+        const k = dateKey(d)
+        const price = PRICING[m.model ?? c.model] ?? DEFAULT_PRICE
+        const cost = (m.usage.input_tokens / 1_000_000) * price.input
+                   + (m.usage.output_tokens / 1_000_000) * price.output
+        map.set(k, (map.get(k) || 0) + cost)
+      }
     }
     return map
   }, [filtered])

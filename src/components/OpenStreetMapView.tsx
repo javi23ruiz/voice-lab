@@ -16,6 +16,7 @@ interface Props {
   theme: 'dark' | 'light'
   conversation: Conversation
   onUpdateConversation: (updater: (prev: Conversation) => Conversation) => void
+  username?: string
 }
 
 // ─── Tile provider config ─────────────────────────────────────────────────────
@@ -143,11 +144,12 @@ const UAE_ZOOM = 6
 const MIN_PCT = 15
 const MAX_PCT = 85
 
-const MAP_SUGGESTIONS = [
-  'Fly to Tokyo',
-  'Switch to satellite',
-  'Show railways overlay',
-  'Jump to my location',
+const MAP_CHIPS = [
+  { emoji: '🗺️', label: 'Fly to Tokyo' },
+  { emoji: '🛰️', label: 'Switch to satellite' },
+  { emoji: '🚂', label: 'Show railways overlay' },
+  { emoji: '📍', label: 'Jump to my location' },
+  { emoji: '✨', label: 'Surprise Me' },
 ]
 
 /** Invalidates Leaflet's cached size whenever splitPct changes */
@@ -275,7 +277,7 @@ function HeatmapOverlay() {
   return null
 }
 
-export function OpenStreetMapView({ theme, conversation, onUpdateConversation }: Props) {
+export function OpenStreetMapView({ theme, conversation, onUpdateConversation, username }: Props) {
   const [splitPct, setSplitPct] = useState(50)
   const containerRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -386,9 +388,8 @@ export function OpenStreetMapView({ theme, conversation, onUpdateConversation }:
           onSend={sendToAgent}
           onRegenerate={() => {}}
           onEdit={() => {}}
-          suggestions={MAP_SUGGESTIONS}
-          emptyTitle="Map Assistant"
-          emptyDescription="Control the map with natural language. Try zooming, flying to places, switching layers, or adding markers."
+          chips={MAP_CHIPS}
+          username={username}
         />
         <MessageInput
           onSend={sendToAgent}

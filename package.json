@@ -12,10 +12,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
     "@tailwindcss/typography": "^0.5.19",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "lucide-react": "^0.469.0",
@@ -25,6 +27,7 @@
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.6.1",
     "remark-gfm": "^4.0.1",
+    "three": "^0.169.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
@@ -35,6 +38,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/three": "^0.169.0",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",

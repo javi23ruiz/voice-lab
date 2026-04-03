@@ -35,7 +35,7 @@ export function Header({ conversation, sidebarOpen, activeView, onExpandSidebar,
         </>
       )}
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
         <button
           onClick={onToggleTheme}
           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/8 transition-colors"

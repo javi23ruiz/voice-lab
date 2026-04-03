@@ -7,9 +7,12 @@ import { ToastProvider } from './components/Toast'
 import { AnalyticsDashboard } from './components/AnalyticsDashboard'
 import { OpenStreetMapView } from './components/OpenStreetMapView'
 import { LandingCards } from './components/LandingCards'
+import { AuthPage } from './components/AuthPage'
 import { useChat } from './hooks/useChat'
+import { useAuth } from './hooks/useAuth'
 
 export default function App() {
+  const { user, isLoading: authLoading, error: authError, login, register, logout, clearError } = useAuth()
   const {
     conversations,
     activeConversation,
@@ -32,8 +35,14 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [prefill, setPrefill] = useState<string>('')
   const [prefillKey, setPrefillKey] = useState(0)
-  const [activeView, setActiveView] = useState<'chat' | 'analytics' | 'map' | 'landing'>('landing')
-  const [mapConvId, setMapConvId] = useState<string | null>(null)
+
+  const [activeView, setActiveView] = useState<'chat' | 'analytics' | 'map' | 'landing'>(() => {
+    const saved = localStorage.getItem('activeView') as 'chat' | 'analytics' | 'map' | 'landing' | null
+    return saved ?? 'landing'
+  })
+  const [mapConvId, setMapConvId] = useState<string | null>(() =>
+    localStorage.getItem('mapConvId')
+  )
 
   const mapConversation = conversations.find(c => c.id === mapConvId) ?? null
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
@@ -45,6 +54,34 @@ export default function App() {
     root.classList.toggle('light', theme === 'light')
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  // Restore last active conversation on load (guard against deleted convs)
+  useEffect(() => {
+    const savedId = localStorage.getItem('activeConversationId')
+    if (savedId && conversations.find(c => c.id === savedId)) {
+      setActiveConversationId(savedId)
+    } else if (savedId) {
+      // Conversation was deleted — fall back to landing
+      localStorage.removeItem('activeConversationId')
+      setActiveView('landing')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // run once on mount
+
+  // Persist active state whenever it changes
+  useEffect(() => {
+    localStorage.setItem('activeView', activeView)
+  }, [activeView])
+
+  useEffect(() => {
+    if (activeConversationId) localStorage.setItem('activeConversationId', activeConversationId)
+    else localStorage.removeItem('activeConversationId')
+  }, [activeConversationId])
+
+  useEffect(() => {
+    if (mapConvId) localStorage.setItem('mapConvId', mapConvId)
+    else localStorage.removeItem('mapConvId')
+  }, [mapConvId])
 
   useEffect(() => { fetchModels() }, [fetchModels])
 
@@ -61,6 +98,26 @@ export default function App() {
     }
   }, [removeLastExchange])
 
+  // Auth gate — show spinner while validating token, then auth page or main app
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-surface-950">
+        <div className="w-5 h-5 rounded-full border-2 border-accent-500/30 border-t-accent-500 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <AuthPage
+        onLogin={login}
+        onRegister={register}
+        error={authError}
+        onClearError={clearError}
+      />
+    )
+  }
+
   return (
     <ToastProvider>
       <div className="flex h-screen bg-surface-900 text-gray-100 overflow-hidden">
@@ -68,7 +125,7 @@ export default function App() {
           <Sidebar
             conversations={conversations.filter(c => c.messages.length > 0)}
             activeId={activeConversationId}
-            systemPrompt={systemPrompt}
+            username={user.username}
             activeView={activeView === 'analytics' ? 'analytics' : 'chat'}
             onNew={() => { setActiveConversationId(null); setActiveView('landing') }}
             onSelect={id => {
@@ -84,7 +141,7 @@ export default function App() {
             onDelete={deleteConversation}
             onRename={renameConversation}
             onPin={pinConversation}
-            onSystemPromptChange={setSystemPrompt}
+            onLogout={logout}
             onCollapse={() => setSidebarOpen(false)}
             onSetView={setActiveView}
           />
@@ -107,6 +164,7 @@ export default function App() {
               theme={theme}
               conversation={mapConversation}
               onUpdateConversation={updater => updateConversation(mapConvId!, updater)}
+              username={user?.username}
             />
           ) : activeView === 'landing' ? (
             <LandingCards
@@ -130,6 +188,7 @@ export default function App() {
                 onSend={sendMessage}
                 onRegenerate={handleRegenerate}
                 onEdit={handleEdit}
+                username={user?.username}
               />
               <MessageInput
                 onSend={sendMessage}
